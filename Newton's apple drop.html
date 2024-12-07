@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Newton's Apple Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #fff;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Game settings
+    const newtonWidth = 100;  // 뉴턴 너비
+    const newtonHeight = 160; // 뉴턴 높이
+    const appleSize = 80;     // 사과 크기
+    let appleSpeed = 15;       // 사과 속도
+    let elapsedTime = 0;
+    let running = true;
+
+    // Load images
+    const newtonImg = new Image();
+    newtonImg.src = 'newton.png'; // 뉴턴 이미지 경로
+    const appleImg = new Image();
+    appleImg.src = 'apple.png'; // 사과 이미지 (선택 사항)
+
+    // Load sound files
+    const backgroundMusic = new Audio('sounds/background_music.mp3');  // 배경 음악
+    const gameOverSound = new Audio('sounds/game_over_sound.mp3');  // 게임 오버 소리
+
+    // 게임 오버 소리의 볼륨을 50%로 설정
+    gameOverSound.volume = 0.5;  // 볼륨 값은 0에서 1 사이로 설정 가능 (0.5는 50%)
+
+    // Newton (player) - 고정된 y 위치
+    const newton = { 
+      x: canvas.width / 2 - newtonWidth / 2, 
+      y: canvas.height - 300, 
+      width: newtonWidth, 
+      height: newtonHeight 
+    };
+
+    // Multiple apples (falling objects)
+    let apples = []; // 여러 개의 사과를 담을 배열
+
+    // Timer
+    const startTime = Date.now();
+
+    // Spawn new apple
+    function spawnApple() {
+      let apple = {
+        x: Math.random() * (canvas.width - appleSize),
+        y: 0,
+        size: appleSize
+      };
+      apples.push(apple);
+    }
+
+    // Start background music after user interaction (click or mouse move)
+    let musicStarted = false;
+    canvas.addEventListener('mousemove', () => {
+      if (!musicStarted) {
+        backgroundMusic.loop = true;  // 반복 설정
+        backgroundMusic.play();  // 배경 음악 재생
+        musicStarted = true;
+      }
+    });
+
+    // Main game loop
+    function gameLoop() {
+      if (!running) return;
+
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Update Newton position (left-right with mouse)
+      canvas.onmousemove = (e) => {
+        newton.x = e.clientX - newton.width / 2;
+        if (newton.x < 0) newton.x = 0; // 왼쪽 경계
+        if (newton.x + newton.width > canvas.width) newton.x = canvas.width - newton.width; // 오른쪽 경계
+      };
+
+      // Update apples' position and check collisions
+      for (let i = apples.length - 1; i >= 0; i--) {
+        apples[i].y += appleSpeed;
+
+        // If apple goes off the screen, remove it
+        if (apples[i].y > canvas.height) {
+          apples.splice(i, 1);
+        }
+
+        // Check collision
+        if (
+          newton.x < apples[i].x + apples[i].size &&
+          newton.x + newton.width > apples[i].x &&
+          newton.y < apples[i].y + apples[i].size &&
+          newton.y + newton.height > apples[i].y
+        ) {
+          gameOverSound.play(); // 게임 오버 소리 재생
+          running = false;
+          alert('Game Over! Refresh to play again.');
+        }
+      }
+
+      // Draw Newton (image)
+      ctx.drawImage(newtonImg, newton.x, newton.y, newton.width, newton.height);
+
+      // Draw apples (image or default shape)
+      apples.forEach(apple => {
+        if (appleImg.complete) {
+          ctx.drawImage(appleImg, apple.x, apple.y, apple.size, apple.size);
+        } else {
+          ctx.fillStyle = 'red';
+          ctx.beginPath();
+          ctx.ellipse(
+            apple.x + apple.size / 2,
+            apple.y + apple.size / 2,
+            apple.size / 2,
+            apple.size / 2,
+            0,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        }
+      });
+
+      // Display timer
+      elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+      ctx.fillStyle = 'black';
+      ctx.font = '24px Arial';
+      ctx.fillText(`Time: ${elapsedTime}s`, 10, 30);
+
+      // Request the next animation frame
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Start the game
+    newtonImg.onload = () => {
+      gameLoop();
+    };
+
+    // Spawn a new apple every 500ms (0.5 seconds)
+    setInterval(spawnApple, 100);
+  </script>
+</body>
+</html>
